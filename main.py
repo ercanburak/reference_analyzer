@@ -2,21 +2,22 @@ import os
 import re
 import PyPDF2
 
-path = '/home/gg/.local/share/data/Mendeley Ltd./Mendeley Desktop/Downloaded/'
-txt = ''
+pathminer = 'textedpdfs/miner'
+pathpy = 'textedpdfs/pypdf'
 
 def find_ref_number(pdftext, pos):
     refnum = 0
-    for i in range(50):
-        tmp_pos = pos-i
-        if(pdftext[tmp_pos] == '['):
-            if(pdftext[tmp_pos+2] == ']'):
-                refnum = pdftext[tmp_pos+1]
-            elif(pdftext[tmp_pos+3] == ']'):
-                refnum = pdftext[tmp_pos+1:tmp_pos+3]
-            elif(pdftext[tmp_pos+4] == ']'):
-                refnum = pdftext[tmp_pos+1:tmp_pos+4]
-            break
+    if(pos != -1):
+        for i in range(50):
+            tmp_pos = pos-i
+            if(pdftext[tmp_pos] == '['):
+                if(pdftext[tmp_pos+2] == ']'):
+                    refnum = pdftext[tmp_pos+1]
+                elif(pdftext[tmp_pos+3] == ']'):
+                    refnum = pdftext[tmp_pos+1:tmp_pos+3]
+                elif(pdftext[tmp_pos+4] == ']'):
+                    refnum = pdftext[tmp_pos+1:tmp_pos+4]
+                break
     return refnum
 
 def valid_ref(pdftext, pos, refnum):
@@ -40,12 +41,13 @@ def purify_occurences(pdftext, occurences, refnum):
 
 def get_sentence_pos(pdftext, pos):
     flag = False
+    i = j = 0
     for i in range(300):
-        if(pdftext[pos-i] == '.'):
+        if(pdftext[pos-20-i] == '.'):
             if(flag):
                 flag = False
                 for j in range(300):
-                    if(pdftext[pos+j] == '.'):
+                    if(pdftext[pos+20+j] == '.'):
                         if(flag):
                             break
                         else:
@@ -53,51 +55,54 @@ def get_sentence_pos(pdftext, pos):
                 break
             else:
                 flag = True
-    return [pos-i,pos+j]
+    return [pos-19-i,pos+20+j]
 
-def print_ref(pdftext, occurences, file, refnum):
+def print_ref(pdftext, txt, occurences, paper, refnum):
+    txt+='********************************' + paper + ' : ' + refnum + '********************************\n'
     for occ in occurences:
         [start, end] = get_sentence_pos(pdftext, occ)
-        txt+='********************************\n'
-        txt+=file + ':' + refnum + '\n'
         txt+='-------------------\n'
-        txt += pdfstr[start:end] + '\n'
-        txt+='-------------------\n'
-        print(txt)
+        txt += pdfstr[start:end].replace('.', '.\n') + '\n'
+    return txt
 
-papers = []
-for r, d, f in os.walk(path):
-    for file in f:
-        if '.pdf' in file:
-            tmp = [m.start() for m in re.finditer('-', file)]
-            tmpstr = file[tmp[1]+2:]
-            tmpstr = tmpstr.replace('.pdf', '')
-            tmpstr = tmpstr.replace(' ', '')
-            tmpstr = tmpstr.lower()
-            papers.append(tmpstr)
+if __name__ == '__main__':
+    for r, d, f in os.walk(pathminer):
+        for file1 in f:
+            try:
+                paper = file1.replace('.txt', '')
+                txt = ''
+                for file2 in f:
+                    if(file1 != file2):
+                        with open(os.path.join(r, file2), 'r') as pdffile:
+                            pdfstr = pdffile.read()
+                        refnum = find_ref_number(pdfstr, pdfstr.find(paper))
+                        if(refnum == 0):
+                            if(os.path.isfile(os.path.join(pathpy, file2))):
+                                with open(os.path.join(pathpy, file2), 'r') as pdffile:
+                                    pdfstr2 = pdffile.read()
+                                refnum = find_ref_number(pdfstr2, pdfstr2.find(paper.replace(' ', '')))
+                                if(refnum != 0):
+                                    print('found in pypdf!!!')
 
-for paper in papers:
-    txt = ''
-    file1 = open(paper + '.txt',"w") 
-    name =  paper
-    for r, d, f in os.walk(path):
-        for file in f:
-            if '.pdf' in file:
-                try:
-                    pdfFileObj = open(os.path.join(r, file), 'rb')
-                    pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
-                    pdfstr = ""
-                    for i in range(pdfReader.numPages):
-                        pdfstr += pdfReader.getPage(i).extractText().lower()
-                    pdfstr = pdfstr.replace('\n', '')
-                    if(pdfstr.find(name) != -1):
-                        refnum = find_ref_number(pdfstr, pdfstr.find(name))
                         if(refnum != 0):
                             occurences = [m.start() for m in re.finditer(refnum, pdfstr)]
                             occurences = purify_occurences(pdfstr, occurences, refnum)
-                            print_ref(pdfstr, occurences, file, refnum)
-                    del pdfFileObj, pdfReader, pdfstr
-                except:
-                    print('exception')
-    file1.write(txt) 
-    file1.close()
+                            txt = print_ref(pdfstr, txt, occurences, file2, refnum)
+
+                    if(txt != ''):
+                        with open('citeds/' + paper + '.txt',"w")  as filetxt:  
+                            filetxt.write(txt) 
+            except Exception as e: 
+                print(e)
+    
+    if(False):
+        for r, d, f in os.walk(pathminer):
+            for file in f:
+                pdffile = open(os.path.join(r, file), 'r')
+                pdfstr = pdffile.read()
+                pdffile.close()
+                pos = pdfstr.find('ﬁ')
+                if(pos != -1):
+                    pdffile = open(os.path.join(r, file), 'w')
+                    pdfstr = pdfstr.replace('ﬁ', 'fi')
+                    pdffile.write(pdfstr)
