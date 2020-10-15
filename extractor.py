@@ -58,33 +58,44 @@ class MyParser(object):
             self.txt += line.lower() + ' '
 
 
-if __name__ == '__main__':
-    path = '/home/gg/.local/share/data/Mendeley Ltd./Mendeley Desktop/Downloaded/'
-    papers = []
+def extract(path):
     for r, d, f in os.walk(path):
         for file in f:
             if '.pdf' in file:
+                print('processing: ' + file)
                 tmp = [m.start() for m in re.finditer('-', file)]
                 paper = file[tmp[1]+2:]
                 paper = paper.replace('.pdf', '')
                 paper = paper.lower()
-                #papers.append(paper)
 
                 if(not os.path.isfile('textedpdfs/miner/' + paper + '.txt')):
-                    p = MyParser(os.path.join(r, file))
-                    with open('textedpdfs/miner/' + paper + '.txt',"w")  as filetxt:
-                        filetxt.write(p.txt) 
-                    del p
+                    try:
+                        print('Extracting for miner!')
+                        p = MyParser(os.path.join(r, file))
+                        with open('textedpdfs/miner/' + paper + '.txt',"w")  as filetxt:
+                            filetxt.write(p.txt) 
+                        del p
+                    except Exception as e: 
+                        print(e)
 
                 if(not os.path.isfile('textedpdfs/pypdf/' + paper + '.txt')):
-                    pdfFileObj = open(os.path.join(r, file), 'rb')
-                    pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
-                    pdfstr = ""
-                    if(pdfReader.numPages < 50):
-                        for i in range(pdfReader.numPages):
-                            pdfstr += pdfReader.getPage(i).extractText().lower()
-                        pdfstr = pdfstr.replace('\n', '')                    
-                        with open('textedpdfs/pypdf/' + paper + '.txt',"w")  as filetxt:
-                            filetxt.write(pdfstr) 
-                    pdfFileObj.close()
-                    del pdfReader
+                    try:
+                        print('Extracting for pypdf!')
+                        pdfFileObj = open(os.path.join(r, file), 'rb')
+                        pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
+                        pdfstr = ""
+                        if(pdfReader.numPages < 50):
+                            for i in range(pdfReader.numPages):
+                                pdfstr += pdfReader.getPage(i).extractText().lower()
+                            pdfstr = pdfstr.replace('\n', '')                    
+                            with open('textedpdfs/pypdf/' + paper + '.txt',"w")  as filetxt:
+                                filetxt.write(pdfstr) 
+                        pdfFileObj.close()
+                        del pdfReader
+                    except Exception as e: 
+                        print(e)
+
+if __name__ == '__main__':
+    path = '/home/gg/.local/share/data/Mendeley Ltd./Mendeley Desktop/Downloaded/'
+    extract(path)
+

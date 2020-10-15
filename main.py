@@ -1,6 +1,7 @@
 import os
 import re
 import PyPDF2
+from extractor import extract
 
 pathminer = 'textedpdfs/miner'
 pathpy = 'textedpdfs/pypdf'
@@ -66,6 +67,9 @@ def print_ref(pdftext, txt, occurences, paper, refnum):
     return txt
 
 if __name__ == '__main__':
+    path2pdfs = '/home/gg/.local/share/data/Mendeley Ltd./Mendeley Desktop/Downloaded/'
+    extract(path2pdfs)
+
     for r, d, f in os.walk(pathminer):
         for file1 in f:
             try:
